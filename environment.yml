@@ -1,0 +1,27 @@
+name: deblurgs
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - plyfile=0.8.1
+  - python=3.10
+  - pip=22.3.1
+  - pytorch=2.1.2
+  - torchvision=0.16.2
+  - torchaudio=2.1.2
+  - pytorch-cuda=11.8
+  - tqdm
+  - matplotlib
+  - scipy
+  - scikit-learn  
+  - pip:
+    - submodules/diff-gaussian-rasterization
+    - submodules/simple-knn
+    - open3d
+    - opencv-python-headless
+    - roma
+    - timm==0.6.7
+    - imageio
+    - imageio[ffmpeg]
