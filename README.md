@@ -3,6 +3,11 @@ Jeongtaek Oh, Jaeyoung Chung, Dongwoo Lee and Kyoung Mu Lee <br>
 
 🚧 Under Construction: Please wait for the cleanup.🚧
 
+### TO-DO
+- Updated Code for reproduction.
+- Release of ExBlur-NP used in paper (ExBlur Dataset + COLMAP with Blurry Observation Only).
+- Detailed markdown explanation.
+  
 ### Setup
 
 #### Local Setup
