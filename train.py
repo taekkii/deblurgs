@@ -69,7 +69,7 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
     
     # Prepare logger, visualizer.
     scene_name = [e for e in args.source_path.split("/") if len(e.strip())>0][-1]
-    progress_bar = tqdm(range(first_iter, opt.iterations), desc=scene_name, ncols=200)
+    progress_bar = tqdm(range(first_iter, opt.iterations+1), desc=scene_name, ncols=200)
     logger = Logger(progress_bar, ema_weight=0.6)
     visualizer = Visualizer(opt, scene, gaussians, background)
     
@@ -86,7 +86,7 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
                                    max_steps=opt.iterations)
     
     alignment_func = get_expon_lr_func(opt.curve_alignment_lr,
-                                       opt.curve_alignment_lr*0.01,
+                                       0.0,
                                        lr_delay_steps=int(opt.densify_until_iter*opt.drop_alignment),
                                        max_steps=opt.iterations)
     
@@ -144,7 +144,7 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
         # Penalize opacity and t out-of-range (not written in the paper.)
         # (We have replaced opacity activation from sigmoid to identity.)
         if opt.lambda_hinge > 0.0:
-            L_hinge = hinge_l2(gaussians._opacity) + hinge_l2(scene.camera_motion_module._nu)
+            L_hinge = hinge_l2(gaussians._opacity) # + hinge_l2(scene.camera_motion_module._nu)
         loss = Ll1 + \
                lambda_t_smooth * L_t_smooth + \
                opt.lambda_depth_tv * L_depth_tv + \

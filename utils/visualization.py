@@ -229,7 +229,7 @@ class Visualizer:
                 idx = self.selected_indice[i*3+j]
                 
                 nu = self.scene.camera_motion_module._sample_nu_from_alignment(idx).detach().cpu().numpy()
-                nu_pivot = self.scene.camera_motion_module._nu[idx].sort().values.detach().cpu().numpy()
+                nu_pivot = torch.sigmoid(self.scene.camera_motion_module._nu[idx].sort().values).detach().cpu().numpy()
                 y = np.linspace(0.0,1.0,nu.shape[0])
                 # Plotting the histogram in the current subplot
                 

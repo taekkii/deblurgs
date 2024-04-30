@@ -12,6 +12,7 @@ import utils.pytorch3d_functions as torch3d
 from scene.cameras import Camera, MiniCam
 from utils.camera_utils import cameraList_from_camInfos
 from gaussian_renderer import render
+from scene.gaussian_activation import inverse_sigmoid
 
 class CameraMotionModule:
     
@@ -51,7 +52,7 @@ class CameraMotionModule:
 
         # Alignment Parameters
         n = len(self)
-        self._nu = nn.Parameter( torch.linspace(1/(f-1), 1.0-(1/(f-1)), f-2)[None,:].repeat(n,1).cuda().contiguous().requires_grad_(True))
+        self._nu = nn.Parameter( inverse_sigmoid( torch.linspace(1/(f-1), 1.0-(1/(f-1)), f-2)[None,:].repeat(n,1).cuda()).contiguous().requires_grad_(True) )
     
     def link_gaussian(self, gaussians:GaussianModel):
         """
@@ -209,7 +210,7 @@ class CameraMotionModule:
         
         device = self._nu.device
         
-        nu_mid = self._nu[idx] # [f-2]
+        nu_mid = torch.sigmoid(self._nu[idx]) # [f-2]
         if self.curve_random_sample:
             nu_mid = nu_mid + torch.rand_like(nu_mid) / self.n_subframes - (1/(2*self.n_subframes)) # add some "uncertainty"
      

@@ -94,8 +94,8 @@ class OptimizationParams(ParamGroup):
         self.percent_dense = 0.01
         self.noise_init = 0.0
         self.noise_final = 0.0 
-        self.lambda_t_smooth_init = 1e-4
-        self.lambda_t_smooth_final = 1e-5 
+        self.lambda_t_smooth_init = 5e-2
+        self.lambda_t_smooth_final = 1e-2 
         
         self.lambda_depth_tv = 0.001
         self.lambda_hinge = 0.1
@@ -117,7 +117,7 @@ class OptimizationParams(ParamGroup):
         self.curve_start_iter = 1000
         self.curve_end_iter = 100_000
         self.random_sample_until = 100000
-        self.drop_alignment = 0.25
+        self.drop_alignment = 1.0
         
         super().__init__(parser, "Optimization Parameters")
 
