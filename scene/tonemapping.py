@@ -6,7 +6,7 @@ class ToneMapping(nn.Module):
 
     # TODO 
     # somehow make this code smarter (than if elses...)
-    def __init__(self, tone_mapping_type:str, eps=1e-8, bound=1/25):
+    def __init__(self, tone_mapping_type:str, eps=1e-8, bound=0):
         """
         Tone Mapping (CRF).
         currently only support: x^(1/2.2)

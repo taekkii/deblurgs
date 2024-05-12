@@ -94,10 +94,10 @@ class OptimizationParams(ParamGroup):
         self.percent_dense = 0.01
         self.noise_init = 0.0
         self.noise_final = 0.0 
-        self.lambda_t_smooth_init = 5e-2
-        self.lambda_t_smooth_final = 1e-2 
+        self.lambda_t_smooth_init = 1e-3
+        self.lambda_t_smooth_final = 1e-5 
         
-        self.lambda_depth_tv = 0.001
+        self.lambda_depth_tv = 0.0
         self.lambda_hinge = 0.1
         
         self.densification_interval = 200
@@ -112,7 +112,8 @@ class OptimizationParams(ParamGroup):
         # curve optimization factors.
         self.curve_controlpoints_lr = 1e-2
         self.curve_rotation_lr = 1e-3
-        self.curve_alignment_lr = 3e-3
+        self.curve_alignment_lr = 0.0 # 3e-3
+        self.curve_alignment_start = 30_000
         self.curve_lr_half_iter = 15_000
         self.curve_start_iter = 1000
         self.curve_end_iter = 100_000

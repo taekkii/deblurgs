@@ -14,6 +14,8 @@ import sys
 from datetime import datetime
 import numpy as np
 import random
+import math
+
 
 def inverse_sigmoid(x):
     return torch.log(x/(1-x))
@@ -67,6 +69,36 @@ def get_expon_lr_func(
         return log_lerp
 
     return helper
+
+def get_scheduler(lr_init, lr_final, warmup_ratio, step_warmup, step_final):
+    """Return a scheduler function that handles exponential growth during warmup and exponential decay."""
+    
+    def get_lr(step):
+        """Calculate the learning rate for a given step."""
+        if step < 1:
+            raise ValueError("Step must be greater than 0")
+        
+        lr_start = lr_init * warmup_ratio
+
+        # Exponential warmup phase
+        if step <= step_warmup:
+            lr = 0.0
+            # warmup_rate = math.log(lr_init / lr_start) / (step_warmup - 1)
+            # lr = lr_start * math.exp(warmup_rate * (step - 1))
+        
+        # Exponential decay phase
+        elif step <= step_final:
+            if lr_init <= 1e-8:
+                return 0.0
+            decay_rate = math.log(lr_final / lr_init) / (step_final - step_warmup)
+            lr = lr_init * math.exp(decay_rate * (step - step_warmup))
+        
+        else:
+            lr = lr_final
+        
+        return lr
+    
+    return get_lr
 
 def strip_lowerdiag(L):
     uncertainty = torch.zeros((L.shape[0], 6), dtype=torch.float, device="cuda")

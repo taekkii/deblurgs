@@ -1,7 +1,9 @@
 # DeblurGS: Gaussian Splatting for Camera Motion Blur
 Jeongtaek Oh, Jaeyoung Chung, Dongwoo Lee and Kyoung Mu Lee <br>
 
+## IMPORTANT
 🚧 Under Construction: Please wait for the cleanup.🚧
+
 
 ### TO-DO
 - Updated Code for reproduction.

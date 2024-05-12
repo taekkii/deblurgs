@@ -19,9 +19,10 @@ from tqdm import tqdm
 from argparse import ArgumentParser, Namespace
 from arguments import ModelParams, OptimizationParams
 from utils.visualization import Visualizer
-from utils.general_utils import get_expon_lr_func
+import utils.general_utils as general_utils
 from utils.system_utils import do_system
 from utils.logger import Logger
+import time
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -61,6 +62,7 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
         (model_params, first_iter) = torch.load(checkpoint)
         gaussians.restore(model_params, opt)
     first_iter += 1
+    training_time_sec = 0.0
 
     # Background color is for Visualizer only.
     # (We provide random background color for training as we want the influence of background to be 0.)
@@ -71,33 +73,41 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
     scene_name = [e for e in args.source_path.split("/") if len(e.strip())>0][-1]
     progress_bar = tqdm(range(first_iter, opt.iterations+1), desc=scene_name, ncols=200)
     logger = Logger(progress_bar, ema_weight=0.6)
-    visualizer = Visualizer(opt, scene, gaussians, background)
+    visualizer = Visualizer(opt, scene, gaussians, background, vis_cam_idx=args.vis_cam_idx)
     
     # Schedulers
-    densify_threshold_func = get_expon_lr_func(opt.densify_grad_threshold_init,
-                                            opt.densify_grad_threshold_final,
-                                            max_steps=opt.densify_annealing_until)
+    densify_threshold_func = general_utils.get_expon_lr_func(opt.densify_grad_threshold_init,
+                                                             opt.densify_grad_threshold_final,
+                                                             max_steps=opt.densify_annealing_until)
 
-    lambda_t_smooth_func = get_expon_lr_func(opt.lambda_t_smooth_init,
-                                             opt.lambda_t_smooth_final,
-                                             max_steps=opt.iterations)
-    noise_func = get_expon_lr_func(opt.noise_init,
-                                   opt.noise_final,
-                                   max_steps=opt.iterations)
+    lambda_t_smooth_func = general_utils.get_expon_lr_func( opt.lambda_t_smooth_init,
+                                                            opt.lambda_t_smooth_final,
+                                                            max_steps=opt.iterations)
+    noise_func = general_utils.get_expon_lr_func(opt.noise_init,
+                                                 opt.noise_final,
+                                                 max_steps=opt.iterations)
     
-    alignment_func = get_expon_lr_func(opt.curve_alignment_lr,
-                                       0.0,
-                                       lr_delay_steps=int(opt.densify_until_iter*opt.drop_alignment),
-                                       max_steps=opt.iterations)
+    alignment_func = general_utils.get_scheduler(lr_init=opt.curve_alignment_lr,
+                                                 lr_final=1e-7,
+                                                 warmup_ratio=0.0,
+                                                 step_warmup=opt.curve_alignment_start,
+                                                 step_final=opt.iterations)
+    # alignment_func = get_expon_lr_func(opt.curve_alignment_lr,
+    #                                    0.0,
+    #                                    lr_delay_steps=int(opt.densify_until_iter*opt.drop_alignment),
+    #                                    max_steps=opt.iterations)
     
+    # alignment_func = get
     # Turn off camera motion optimizer.
     cam_motion_module.alternate_optimization() 
 
     for iteration in range(first_iter, opt.iterations + 1):        
         
+        t0 = time.time()
+
         # Update scheduled hyperparameters.
         gaussians.update_learning_rate(iteration, opt,alignment_lr=alignment_func(iteration))
-        densification_threshold = densify_threshold_func(iteration)
+        densification_threshold = densify_threshold_func(iteration) if args.flag != 1 else opt.densify_grad_threshold_init
         lambda_t_smooth = lambda_t_smooth_func(iteration)
         
         # Turn on/off camera motion optimizer. 
@@ -140,7 +150,9 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
         # Depth Smoothness (Optional). Not written in the paper.
         if opt.lambda_depth_tv>0.0:
             L_depth_tv = tv_loss(subframe_depths[:,None,:,:])
-        
+        else:
+            L_depth_tv = 0.0
+            
         # Penalize opacity and t out-of-range (not written in the paper.)
         # (We have replaced opacity activation from sigmoid to identity.)
         if opt.lambda_hinge > 0.0:
@@ -151,12 +163,14 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
                opt.lambda_hinge * L_hinge
             
         loss.backward()
+
         
         with torch.no_grad():
             # Progress bar
             logger.update( {"l1":(Ll1,"ema",".5f"),
                             "smooth":(L_t_smooth,"ema",".7f"),
                             "hinge":(L_hinge,"ema",".7f"),
+                            "vel":(alignment_func(iteration),"update",".4f"),
                             "#pts":(gaussians._xyz.shape[0],"update","7d")})
             if iteration % 10 == 0:
                 logger.show()
@@ -193,6 +207,9 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
                 gaussians.optimizer.step()
                 gaussians.optimizer.zero_grad(set_to_none = True)
 
+            # 
+            time_sec = time.time() - t0
+            training_time_sec = training_time_sec + time_sec
             # Save and visualize.
             if (iteration in checkpoint_iterations):
                 print("\n[ITER {}] Saving Checkpoint".format(iteration))
@@ -206,6 +223,9 @@ def training(dataset:ModelParams, opt:OptimizationParams, args):
 
     if is_visualizing_curve:
         visualizer.save_video()
+        
+    with open(os.path.join(args.model_path,"time.txt") ,"w") as fp:
+        print(f"Training Time = {training_time_sec:7.5f}sec" , file=fp)
         
     for rendercode in ["render_spiral", "render_trainview"]:
         do_system(f"python {rendercode}.py --model {args.model_path} --source {args.source_path} "
@@ -244,8 +264,11 @@ if __name__ == "__main__":
     parser.add_argument("--render_iterations", nargs="+", type=int, default=[25_000, 50_000, 75_000, 100_000, 125_000, 150_000])
     
     parser.add_argument("--disable_curve_visualize", action="store_true", help="Do not use visualizer.")
+    parser.add_argument("--vis_cam_idx", type=int, default=None, help="visualizer will focus on [VIS_CAM_IDX]-th camera rendering, instead of overall view.")
     parser.add_argument("--load_camera_motion_path", type=str, default=None, help="Load motion parameters, either .pth file or the workspace directory.")
     parser.add_argument("--load_path", type=str, default=None, help="Load gaussian from.")
+    
+    parser.add_argument("--flag", type=int, default=None, help="custom flag for hard-coding experiment.")
     args = parser.parse_args(sys.argv[1:])
         
     args.save_iterations.append(args.iterations)

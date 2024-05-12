@@ -11,7 +11,7 @@ from arguments import ModelParams
 import utils.pytorch3d_functions as torch3d
 from scene.cameras import Camera, MiniCam
 from utils.camera_utils import cameraList_from_camInfos
-from gaussian_renderer import render
+import gaussian_renderer
 from scene.gaussian_activation import inverse_sigmoid
 
 class CameraMotionModule:
@@ -139,7 +139,7 @@ class CameraMotionModule:
         render_pkg_subframes = []
         
         for cam in subframe_cams:
-            render_pkg = render(cam, gaussians, bg)
+            render_pkg = gaussian_renderer.render(cam, gaussians, bg)
             render_pkg_subframes.append(render_pkg)        
         
         render_subframes = torch.stack([render_pkg['render'] for render_pkg in render_pkg_subframes]) # [f,3,h,w], f is num_subframes.
